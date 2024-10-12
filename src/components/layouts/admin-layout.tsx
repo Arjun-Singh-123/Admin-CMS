@@ -294,9 +294,9 @@ const MenuItem = ({
         }`}
         onClick={toggleSubmenu}
       >
-        {Icon && <Icon className="w-5 h-5 mr-2" />}
+        {Icon && <Icon className="w-5 h-5 mr-2 " />}
         {isSidebarOpen && (
-          <span className="flex-grow">{item.name || item.label}</span>
+          <span className="flex-grow  ">{item.name || item.label}</span>
         )}
         {hasChildren && (
           <ChevronDown
@@ -344,9 +344,9 @@ export default function AdminLayout({
   return (
     <div className="flex h-screen bg-gray-100">
       <aside
-        className={`bg-gray-800 text-white transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? "w-64" : "w-16"
-        }`}
+        className={`bg-gray-800 w-16 md:w-64 text-white transition-all duration-300 ease-in-out
+           
+        `}
       >
         <div className="p-4 flex justify-between items-center">
           {isSidebarOpen && (

@@ -67,13 +67,13 @@ export default function ManageRentals() {
     const { data, error } = await supabase
       .from("rentals")
       .update({
-        members: [...rentals[0]?.members, newMember],
+        members: [...rentals[0]?.members, newMember] as any,
       })
       .eq("id", rentals[0]?.id)
       .select("*");
 
     if (error) console.error("Error updating members:", error);
-    else setRentals(data || []);
+    else setRentals((data as any) || []);
 
     // Reset form
     setNewMember({
@@ -94,13 +94,13 @@ export default function ManageRentals() {
     const { data, error } = await supabase
       .from("rentals")
       .update({
-        non_members: [...rentals[0]?.non_members, newNonMember],
+        non_members: [...rentals[0]?.non_members, newNonMember] as any,
       })
       .eq("id", rentals[0]?.id)
       .select("*");
 
     if (error) console.error("Error updating non-members:", error);
-    else setRentals(data || []);
+    else setRentals((data as any) || []);
 
     // Reset form
     setNewNonMember({

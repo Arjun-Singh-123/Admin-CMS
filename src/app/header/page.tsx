@@ -59,7 +59,7 @@ const getNavItems = async (): Promise<NavItem[]> => {
     .select("*")
     .order("name");
   if (error) throw error;
-  return data;
+  return data as NavItem[];
 };
 
 const getNavSections = async (): Promise<NavSection[]> => {
@@ -68,7 +68,7 @@ const getNavSections = async (): Promise<NavSection[]> => {
     .select("*")
     .order("name");
   if (error) throw error;
-  return data;
+  return data as any;
 };
 
 const getNavSubsections = async (): Promise<NavSubsection[]> => {
@@ -77,7 +77,7 @@ const getNavSubsections = async (): Promise<NavSubsection[]> => {
     .select("*")
     .order("name");
   if (error) throw error;
-  return data;
+  return data as NavSubsection[];
 };
 
 const addNavItem = async (item: NavItem): Promise<NavItem> => {
@@ -132,7 +132,10 @@ const updateItemStatus = async (
   id: string,
   status: "draft" | "published"
 ): Promise<void> => {
-  const { error } = await supabase.from(table).update({ status }).match({ id });
+  const { error } = await supabase
+    .from(table as any)
+    .update({ status })
+    .match({ id });
   if (error) throw error;
 };
 
@@ -142,7 +145,7 @@ const updateNavSectionMenuItem = async (
 ): Promise<void> => {
   const { error } = await supabase
     .from("nav_sections")
-    .update({ nav_item_id: navItemId })
+    .update({ nav_item_id: navItemId } as any)
     .match({ id: sectionId });
   if (error) throw error;
 };

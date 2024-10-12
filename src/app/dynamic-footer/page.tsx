@@ -29,7 +29,7 @@ interface FooterContent {
     [key: string]: FooterField;
   };
 }
-const updateFooterContent = async (footerContent) => {
+const updateFooterContent = async (footerContent: any) => {
   const { data, error } = await supabase
     .from("footer_contentsa")
     .upsert(footerContent)
@@ -95,12 +95,14 @@ export default function DynamicFooterEditor() {
   //   });
 
   // Local state to manage footer content updates
-  const [footerContent, setFooterContent] = useState({ content: {} });
+  const [footerContent, setFooterContent] = useState<FooterContent>({
+    content: {},
+  });
 
   // Update local state when fetchedFooterContent changes
   useEffect(() => {
     if (fetchedFooterContent) {
-      setFooterContent(fetchedFooterContent);
+      setFooterContent(fetchedFooterContent as any);
     }
   }, [fetchedFooterContent]);
 
@@ -187,7 +189,7 @@ export default function DynamicFooterEditor() {
         return;
       }
     } catch (error) {
-      if (!error.message.includes("not found")) {
+      if (!error) {
         console.error("Error checking file existence:", error);
         return;
       }
@@ -374,7 +376,7 @@ export default function DynamicFooterEditor() {
           <div className="flex justify-between items-center mb-2">
             <Input
               //   value={field.label}
-              value={field.label.replace(/\s\d+$/, "")}
+              value={field?.label?.replace(/\s\d+$/, "")}
               onChange={(e) => updateField(label, { label: e.target.value })}
               className="font-semibold"
             />

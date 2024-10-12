@@ -19,14 +19,17 @@ type Product = Item & {
 
 // Generic fetch function
 const fetchItems = async (table: string) => {
-  const { data, error } = await supabase.from(table).select("*");
+  const { data, error } = await supabase.from(table as any).select("*");
   if (error) throw error;
   return data;
 };
 
 // Generic create function
 const createItem = async (table: string, item: Partial<Item | Product>) => {
-  const { data, error } = await supabase.from(table).insert(item).single();
+  const { data, error } = await supabase
+    .from(table as any)
+    .insert(item)
+    .single();
   if (error) throw error;
   return data;
 };
@@ -38,7 +41,7 @@ const updateItem = async (
   updates: Partial<Item | Product>
 ) => {
   const { data, error } = await supabase
-    .from(table)
+    .from(table as any)
     .update(updates)
     .eq("id", id)
     .single();
@@ -75,11 +78,11 @@ export const useProducts = () => {
 };
 
 // Mutations
-export const useCreateItem = (table) => {
+export const useCreateItem = (table: any) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (item) => createItem(table, item),
+    mutationFn: (item) => createItem(table, item as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [table] });
       toast.success(`${table.slice(0, -1)} created successfully!`); // Toast for success
@@ -90,11 +93,12 @@ export const useCreateItem = (table) => {
   });
 };
 
-export const useUpdateItem = (table) => {
+export const useUpdateItem = (table: any) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, updates }) => updateItem(table, id, updates),
+    mutationFn: ({ id, updates }: { id: any; updates: any }) =>
+      updateItem(table, id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [table] });
       toast.success(`${table.slice(0, -1)} updated successfully!`); // Toast for success
@@ -107,19 +111,19 @@ export const useUpdateItem = (table) => {
 
 // New function for uploading images to Supabase storage
 export const uploadImage = async (file: File, bucket: string) => {
-  const { data, error } = await supabase.storage
+  const { data, error: uploadError } = await supabase.storage
     .from(bucket)
     .upload(`${Date.now()}_${file.name}`, file);
 
-  if (error) throw error;
+  if (uploadError) throw uploadError;
 
   const {
     data: { publicUrl },
-    error: urlError,
   } = supabase.storage.from(bucket).getPublicUrl(data.path);
-
-  if (urlError) throw urlError;
-
+  // Check if publicUrlData is defined
+  if (!publicUrl) {
+    throw new Error("Failed to get public URL");
+  }
   return publicUrl;
 };
 
