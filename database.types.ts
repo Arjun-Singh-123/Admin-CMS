@@ -263,6 +263,27 @@ export type Database = {
         }
         Relationships: []
       }
+      homepage_sections: {
+        Row: {
+          id: number
+          is_visible: boolean | null
+          page: string
+          section_name: string
+        }
+        Insert: {
+          id?: number
+          is_visible?: boolean | null
+          page: string
+          section_name: string
+        }
+        Update: {
+          id?: number
+          is_visible?: boolean | null
+          page?: string
+          section_name?: string
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           about: string | null
@@ -372,6 +393,119 @@ export type Database = {
           },
         ]
       }
+      nav_items: {
+        Row: {
+          created_at: string | null
+          href: string
+          id: string
+          name: string
+          section_id: string | null
+          status: string | null
+          subsection_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          href: string
+          id?: string
+          name: string
+          section_id?: string | null
+          status?: string | null
+          subsection_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          href?: string
+          id?: string
+          name?: string
+          section_id?: string | null
+          status?: string | null
+          subsection_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nav_items_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "nav_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nav_items_subsection_id_fkey"
+            columns: ["subsection_id"]
+            isOneToOne: false
+            referencedRelation: "nav_subsections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nav_sections: {
+        Row: {
+          created_at: string | null
+          href: string
+          id: string
+          name: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          href: string
+          id?: string
+          name: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          href?: string
+          id?: string
+          name?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      nav_subsections: {
+        Row: {
+          created_at: string | null
+          href: string
+          id: string
+          name: string
+          section_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          href: string
+          id?: string
+          name: string
+          section_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          href?: string
+          id?: string
+          name?: string
+          section_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nav_subsections_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "nav_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       navigation_items: {
         Row: {
           created_at: string | null
@@ -412,27 +546,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      otps: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: number
-          otp: number
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id?: number
-          otp: number
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: number
-          otp?: number
-        }
-        Relationships: []
       }
       posts: {
         Row: {

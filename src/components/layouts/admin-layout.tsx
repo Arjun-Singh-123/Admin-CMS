@@ -107,6 +107,10 @@ const menuGroups = [
         route: " /dynamic-footer",
       },
       {
+        label: "Toggle Sections",
+        route: "/toggle-components",
+      },
+      {
         label: "General",
         route: "/settings/general",
       },
