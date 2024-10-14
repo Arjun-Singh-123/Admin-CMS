@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PlusCircle, Trash2, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface NavItem {
   id?: string;
@@ -80,7 +81,11 @@ const getNavSubsections = async (): Promise<NavSubsection[]> => {
   return data as NavSubsection[];
 };
 
-const addNavItem = async (item: NavItem): Promise<NavItem> => {
+const addNavItem = async (item: NavItem): Promise<NavItem | null> => {
+  if (!item.name || !item.href) {
+    toast.error("fields cannot be empty");
+    return null;
+  }
   const { data, error } = await supabase
     .from("nav_items")
     .insert(item)
@@ -191,6 +196,7 @@ export default function EnhancedMenuCMS() {
     mutationFn: addNavItem,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["navItems"] });
+      toast.success("Menu item added successfully");
       setNewNavItem({ name: "", href: "", status: "draft" });
     },
   });
@@ -199,6 +205,7 @@ export default function EnhancedMenuCMS() {
     mutationFn: addNavSection,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["navSections"] });
+      toast.success("Nav Section added successfully");
       setNewNavSection({
         name: "",
         href: "",
@@ -212,6 +219,8 @@ export default function EnhancedMenuCMS() {
     mutationFn: addNavSubsection,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["navSubsections"] });
+      toast.success("Nav Subsection added successfully");
+
       setNewNavSubsection({
         name: "",
         href: "",
@@ -224,7 +233,9 @@ export default function EnhancedMenuCMS() {
   const deleteNavItemMutation = useMutation({
     mutationFn: deleteNavItem,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["navItems", "navSections"] });
+      queryClient.invalidateQueries({ queryKey: ["navItems"] });
+      queryClient.invalidateQueries({ queryKey: ["navSections"] });
+      toast.success("NavItem deleted successfully");
     },
   });
 
@@ -232,8 +243,12 @@ export default function EnhancedMenuCMS() {
     mutationFn: deleteNavSection,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["navSections", "navSubsections"],
+        queryKey: ["navSections"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["navSubsections"],
+      });
+      toast.success(" NavSection deleted successfully");
     },
   });
 
@@ -241,6 +256,7 @@ export default function EnhancedMenuCMS() {
     mutationFn: deleteNavSubsection,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["navSubsections"] });
+      toast.success(" NavSubsection deleted successfully");
     },
   });
 
@@ -277,6 +293,49 @@ export default function EnhancedMenuCMS() {
       section.name.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [];
 
+  const validateNavItem = (item: NavItem): boolean => {
+    // console.log("chcking different is ", item.name.trim(), item.name);
+    if (!item.name.trim() || !item.href.trim()) {
+      toast.error("Name and URL are required for Navigation Items");
+      return false;
+    }
+    return true;
+  };
+
+  const validateNavSection = (section: NavSection): boolean => {
+    if (!section.name.trim()) {
+      toast.error("Name is required for Navigation Sections");
+      return false;
+    }
+    return true;
+  };
+
+  const validateNavSubsection = (subsection: NavSubsection): boolean => {
+    if (!subsection.name.trim() || !subsection.section_id) {
+      toast.error("Name and Section are required for Navigation Subsections");
+      return false;
+    }
+    return true;
+  };
+
+  const handleAddNavItem = () => {
+    if (validateNavItem(newNavItem)) {
+      addNavItemMutation.mutate(newNavItem);
+    }
+  };
+
+  const handleAddNavSection = () => {
+    if (validateNavSection(newNavSection)) {
+      addNavSectionMutation.mutate(newNavSection);
+    }
+  };
+
+  const handleAddNavSubsection = () => {
+    if (validateNavSubsection(newNavSubsection)) {
+      addNavSubsectionMutation.mutate(newNavSubsection);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-6"> Menu CMS</h1>
@@ -294,6 +353,7 @@ export default function EnhancedMenuCMS() {
                   <Input
                     placeholder="Name"
                     value={newNavItem.name}
+                    required
                     onChange={(e) =>
                       setNewNavItem({ ...newNavItem, name: e.target.value })
                     }
@@ -301,15 +361,13 @@ export default function EnhancedMenuCMS() {
                   <Input
                     placeholder="URL"
                     value={newNavItem.href}
+                    required
                     onChange={(e) =>
                       setNewNavItem({ ...newNavItem, href: e.target.value })
                     }
                   />
                 </div>
-                <Button
-                  onClick={() => addNavItemMutation.mutate(newNavItem)}
-                  className="w-full"
-                >
+                <Button onClick={handleAddNavItem} className="w-full">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Navigation Item
                 </Button>
               </CardContent>
@@ -398,10 +456,7 @@ export default function EnhancedMenuCMS() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button
-                  onClick={() => addNavSectionMutation.mutate(newNavSection)}
-                  className="w-full"
-                >
+                <Button onClick={handleAddNavSection} className="w-full">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Navigation Section
                 </Button>
               </CardContent>
@@ -522,12 +577,7 @@ export default function EnhancedMenuCMS() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button
-                  onClick={() =>
-                    addNavSubsectionMutation.mutate(newNavSubsection)
-                  }
-                  className="w-full"
-                >
+                <Button onClick={handleAddNavSubsection} className="w-full">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Subsection
                 </Button>
               </CardContent>

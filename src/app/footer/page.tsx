@@ -34,6 +34,7 @@ export default function FooterEditForm() {
     navigation_links: [],
     copyright_text: "",
   });
+  const [errors, setErrors] = useState<Partial<FooterContent>>({});
 
   useEffect(() => {
     fetchFooterContent();
@@ -54,16 +55,26 @@ export default function FooterEditForm() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const { data, error } = await supabase
-      .from("footer_content")
-      .upsert(footerContent as any)
-      .select();
 
-    if (error) {
-      console.error("Error updating footer content:", error);
+    console.log(":form data before submitting");
+
+    if (e.currentTarget.checkValidity()) {
+      const { data, error } = await supabase
+        .from("footer_content")
+        .upsert(footerContent as any)
+        .select();
+
+      if (error) {
+        console.error("Error updating footer content:", error);
+      } else {
+        console.log("Footer content updated successfully:", data);
+        toast.success("Footer content updated successfully!");
+      }
     } else {
-      console.log("Footer content updated successfully:", data);
-      toast.success("Footer content updated successfully!");
+      console.log("form is invalid");
+      toast.error("Please fill all the fields ! ");
+      e.currentTarget.reportValidity();
+      return null;
     }
   };
 
@@ -111,6 +122,7 @@ export default function FooterEditForm() {
           type="text"
           id="logo_url"
           value={footerContent.logo_url}
+          required
           onChange={(e) =>
             setFooterContent({ ...footerContent, logo_url: e.target.value })
           }
@@ -128,6 +140,7 @@ export default function FooterEditForm() {
         <input
           type="text"
           id="footer_image_url"
+          required
           value={footerContent?.footer_image_url}
           onChange={(e) =>
             setFooterContent({
@@ -149,6 +162,7 @@ export default function FooterEditForm() {
         <input
           type="text"
           id="club_name"
+          required
           value={footerContent.club_name}
           onChange={(e) =>
             setFooterContent({ ...footerContent, club_name: e.target.value })
@@ -188,6 +202,7 @@ export default function FooterEditForm() {
         <textarea
           id="address"
           value={footerContent.address}
+          required
           onChange={(e) =>
             setFooterContent({ ...footerContent, address: e.target.value })
           }
@@ -205,6 +220,7 @@ export default function FooterEditForm() {
         </label>
         <input
           type="text"
+          required
           id="service_area_label"
           value={footerContent.service_area_label}
           onChange={(e) =>
@@ -227,6 +243,7 @@ export default function FooterEditForm() {
         <textarea
           id="service_area"
           value={footerContent.service_area}
+          required
           onChange={(e) =>
             setFooterContent({ ...footerContent, service_area: e.target.value })
           }
@@ -244,6 +261,7 @@ export default function FooterEditForm() {
             <input
               type="text"
               value={link.text}
+              required
               onChange={(e) =>
                 handleNavigationLinkChange(index, "text", e.target.value)
               }
@@ -253,6 +271,7 @@ export default function FooterEditForm() {
             <input
               type="text"
               value={link.url}
+              required
               onChange={(e) =>
                 handleNavigationLinkChange(index, "url", e.target.value)
               }
@@ -287,6 +306,7 @@ export default function FooterEditForm() {
         <input
           type="text"
           id="copyright_text"
+          required
           value={footerContent.copyright_text}
           onChange={(e) =>
             setFooterContent({
