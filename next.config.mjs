@@ -30,7 +30,7 @@ const nextConfig = {
       hostname,
     })),
     // unoptimized: true,
-  },
+  }, 
   // output: "export",
   eslint: {
     ignoreDuringBuilds: true,

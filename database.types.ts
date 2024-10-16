@@ -399,54 +399,6 @@ export type Database = {
           href: string
           id: string
           name: string
-          section_id: string | null
-          status: string | null
-          subsection_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          href: string
-          id?: string
-          name: string
-          section_id?: string | null
-          status?: string | null
-          subsection_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          href?: string
-          id?: string
-          name?: string
-          section_id?: string | null
-          status?: string | null
-          subsection_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "nav_items_section_id_fkey"
-            columns: ["section_id"]
-            isOneToOne: false
-            referencedRelation: "nav_sections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "nav_items_subsection_id_fkey"
-            columns: ["subsection_id"]
-            isOneToOne: false
-            referencedRelation: "nav_subsections"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      nav_sections: {
-        Row: {
-          created_at: string | null
-          href: string
-          id: string
-          name: string
           status: string | null
           updated_at: string | null
         }
@@ -467,6 +419,44 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      nav_sections: {
+        Row: {
+          created_at: string | null
+          href: string
+          id: string
+          name: string
+          nav_item_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          href: string
+          id?: string
+          name: string
+          nav_item_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          href?: string
+          id?: string
+          name?: string
+          nav_item_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nav_sections_nav_item_id_fkey"
+            columns: ["nav_item_id"]
+            isOneToOne: false
+            referencedRelation: "nav_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nav_subsections: {
         Row: {
@@ -571,39 +561,60 @@ export type Database = {
         }
         Relationships: []
       }
-      product: {
+      product_details: {
         Row: {
-          description: string
-          id: number
-          name: string
-          price: number
-          subcategory_id: number | null
+          amenities: Json | null
+          created_at: string | null
+          description: string | null
+          hero_image: string | null
+          icon: string | null
+          id: string
+          images: Json | null
+          product_id: string | null
+          specifications: Json | null
+          subtitle: string | null
+          title: string
+          updated_at: string | null
         }
         Insert: {
-          description: string
-          id?: number
-          name: string
-          price: number
-          subcategory_id?: number | null
+          amenities?: Json | null
+          created_at?: string | null
+          description?: string | null
+          hero_image?: string | null
+          icon?: string | null
+          id?: string
+          images?: Json | null
+          product_id?: string | null
+          specifications?: Json | null
+          subtitle?: string | null
+          title: string
+          updated_at?: string | null
         }
         Update: {
-          description?: string
-          id?: number
-          name?: string
-          price?: number
-          subcategory_id?: number | null
+          amenities?: Json | null
+          created_at?: string | null
+          description?: string | null
+          hero_image?: string | null
+          icon?: string | null
+          id?: string
+          images?: Json | null
+          product_id?: string | null
+          specifications?: Json | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "product_subcategory_id_fkey"
-            columns: ["subcategory_id"]
+            foreignKeyName: "product_details_product_id_fkey1"
+            columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "subcategories"
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
       }
-      product_details: {
+      product_detailsnew: {
         Row: {
           amenities: Json | null
           description: string | null
@@ -645,7 +656,80 @@ export type Database = {
             foreignKeyName: "product_details_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "product"
+            referencedRelation: "productnew"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      productnew: {
+        Row: {
+          description: string
+          id: number
+          name: string
+          price: number
+          subcategory_id: number | null
+        }
+        Insert: {
+          description: string
+          id?: number
+          name: string
+          price: number
+          subcategory_id?: number | null
+        }
+        Update: {
+          description?: string
+          id?: number
+          name?: string
+          price?: number
+          subcategory_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          nav_subsection_id: string | null
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          nav_subsection_id?: string | null
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          nav_subsection_id?: string | null
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_nav_subsection_id_fkey"
+            columns: ["nav_subsection_id"]
+            isOneToOne: false
+            referencedRelation: "nav_subsections"
             referencedColumns: ["id"]
           },
         ]
@@ -938,4 +1022,19 @@ export type Enums<
   ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
