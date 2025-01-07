@@ -1,22 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { DevTool } from "@hookform/devtools";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -24,942 +26,1177 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, Trash2, Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
+import {
+  Clock,
+  Facebook,
+  Globe,
+  Instagram,
+  Mail,
+  MapPin,
+  Phone,
+  Trash,
+  Twitter,
+} from "lucide-react";
+import {
+  fetchHeaderNavItems,
+  fetchHeaderNavSections,
+} from "@/services/header-services";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
+import {
+  deleteContactFromDB,
+  deleteNavItemFromDB,
+  fetchContactsFromDB,
+  fetchHeaderNavItemsFromDB,
+  fetchHeaderNavSectionsFromDB,
+  insertContactInDB,
+  insertNavItemToDB,
+  updateContactInDB,
+  updateNavItemInDB,
+} from "@/lib/queries/navigation";
 
-interface NavItem {
-  id?: string;
-  name: string;
-  href: string;
-  status: "draft" | "published";
-}
+const navItemSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  href: z.string().min(1, "URL is required"),
+  status: z.enum(["draft", "published"]),
+  priority: z.number().nullable().optional(),
+});
 
-interface NavSection {
-  id?: string;
-  name: string;
-  href: string;
-  status: "draft" | "published";
-  nav_item_id: string | null;
-}
+const navSectionSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  href: z.string().min(1, "URL is required"),
+  status: z.enum(["draft", "published"]),
+  slug: z.string().min(1, "Slug is required"),
+  parent_id: z.string().optional(),
+});
 
-interface NavSubsection {
-  id?: string;
-  name: string;
-  href: string;
-  section_id: string;
-  status: "draft" | "published";
-}
+type NavItem = z.infer<typeof navItemSchema>;
+type NavSection = z.infer<typeof navSectionSchema>;
 
-// API functions
-const getNavItems = async (): Promise<NavItem[]> => {
-  const { data, error } = await supabase
-    .from("nav_items")
-    .select("*")
-    .order("name");
-  if (error) throw error;
-  return data as NavItem[];
+const defaultNavSectionValues = {
+  name: "",
+  href: "",
+  status: "draft" as "draft" | "published",
+  slug: "",
+  parent_id: undefined,
 };
 
-const getNavSections = async (): Promise<NavSection[]> => {
-  const { data, error } = await supabase
-    .from("nav_sections")
-    .select("*")
-    .order("name");
-  if (error) throw error;
-  return data as any;
+const defaultNavItems = {
+  name: "",
+  href: "",
+  status: "draft" as "draft" | "published",
+  priority: null,
 };
 
-const getNavSubsections = async (): Promise<NavSubsection[]> => {
-  const { data, error } = await supabase
-    .from("nav_subsections")
-    .select("*")
-    .order("name");
-  if (error) throw error;
-  return data as NavSubsection[];
-};
+// Updated contact schema based on the latest requirements
 
-const addNavItem = async (item: NavItem): Promise<NavItem | null> => {
-  if (!item.name || !item.href) {
-    toast.error("fields cannot be empty");
-    return null;
-  }
-  const { data, error } = await supabase
-    .from("nav_items")
-    .insert(item)
-    .single();
-  if (error) throw error;
-  return data;
-};
+export const contactSchema = z.object({
+  id: z.string().uuid().optional(),
+  icon: z.string().nullable(),
+  label: z.string().min(1, "Label is required"),
+  value: z.string().optional(),
+  type: z.enum([
+    "phone",
+    "hours",
+    "location",
+    "email",
+    "support_email",
+    "social",
+    "login",
+  ]),
+  platform: z.enum(["facebook", "twitter", "instagram", "custom"]).nullable(),
+  status: z.enum(["draft", "published"]).default("published"),
+  position: z.enum(["left", "right"]).default("left"),
+  button_style: z.enum(["primary", "secondary", "outline"]).nullable(),
+  display_order: z
+    .number()
+    .int()
+    .min(0, "Display order must be a non-negative integer")
+    .optional(),
 
-const addNavSection = async (section: NavSection): Promise<NavSection> => {
-  const { data, error } = await supabase
-    .from("nav_sections")
-    .insert(section)
-    .single();
-  if (error) throw error;
-  return data;
-};
+  // created_at: z.date().optional(),
+  // updated_at: z.date().optional(),
+});
 
-const addNavSubsection = async (
-  subsection: NavSubsection
-): Promise<NavSubsection> => {
-  const { data, error } = await supabase
-    .from("nav_subsections")
-    .insert(subsection)
-    .single();
-  if (error) throw error;
-  return data;
-};
+export type Contact = z.infer<typeof contactSchema>;
 
-const deleteNavItem = async (id: string): Promise<void> => {
-  const { error } = await supabase.from("nav_items").delete().match({ id });
-  if (error) throw error;
+export const defaultContactValues: Partial<Contact> = {
+  icon: null,
+  label: "",
+  value: "",
+  type: "phone",
+  platform: null,
+  status: "published",
+  position: "left",
+  button_style: null,
+  display_order: 0,
 };
-
-const deleteNavSection = async (id: string): Promise<void> => {
-  const { error } = await supabase.from("nav_sections").delete().match({ id });
-  if (error) throw error;
-};
-
-const deleteNavSubsection = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from("nav_subsections")
-    .delete()
-    .match({ id });
-  if (error) throw error;
-};
-
-const updateItemStatus = async (
-  table: string,
-  id: string,
-  status: "draft" | "published"
-): Promise<void> => {
-  const { error } = await supabase
-    .from(table as any)
-    .update({ status })
-    .match({ id });
-  if (error) throw error;
-};
-
-const updateNavSectionMenuItem = async (
-  sectionId: string,
-  navItemId: string | null
-): Promise<void> => {
-  const { error } = await supabase
-    .from("nav_sections")
-    .update({ nav_item_id: navItemId } as any)
-    .match({ id: sectionId });
-  if (error) throw error;
-};
-
-// Create a client
 
 export default function EnhancedMenuCMS() {
-  const queryClient = useQueryClient();
+  // states for header
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploadingImageHeader, setUploadingImageHeader] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+
+  // ##
+  const [editingNavItem, setEditingNavItem] = useState<string | null>(null);
+  const [editingNavSection, setEditingNavSection] = useState<string | null>(
+    null
+  );
   const [searchTerm, setSearchTerm] = useState("");
-  const [newNavItem, setNewNavItem] = useState<NavItem>({
-    name: "",
-    href: "",
-    status: "draft",
-  });
-  const [newNavSection, setNewNavSection] = useState<NavSection>({
-    name: "",
-    href: "",
-    status: "draft",
-    nav_item_id: null,
-  });
-  const [newNavSubsection, setNewNavSubsection] = useState<NavSubsection>({
-    name: "",
-    href: "",
-    section_id: "",
-    status: "draft",
+  const [activeTab, setActiveTab] = useState("header");
+  const queryClient = useQueryClient();
+
+  const navItemForm = useForm<NavItem>({
+    resolver: zodResolver(navItemSchema),
+    defaultValues: defaultNavItems,
   });
 
-  const { data: navItems } = useQuery({
+  const navSectionForm = useForm<NavSection>({
+    resolver: zodResolver(navSectionSchema),
+    defaultValues: defaultNavSectionValues,
+  });
+
+  const { data: navItems = [] } = useQuery({
     queryKey: ["navItems"],
-    queryFn: getNavItems,
+    queryFn: () => fetchHeaderNavItemsFromDB(),
   });
-  const { data: navSections } = useQuery({
+  console.log(navItems);
+
+  const { data: navSections = [] } = useQuery({
     queryKey: ["navSections"],
-    queryFn: getNavSections,
-  });
-  const { data: navSubsections } = useQuery({
-    queryKey: ["navSubsections"],
-    queryFn: getNavSubsections,
+    queryFn: () => fetchHeaderNavSectionsFromDB(),
   });
 
-  // Mutations
-  const addNavItemMutation = useMutation({
-    mutationFn: addNavItem,
+  console.log(navSections);
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["contacts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (data: Contact) => {
+      console.log("Mutation function called with data:", data);
+      if (editingId) {
+        await updateContactInDB(editingId, data);
+      } else {
+        await insertContactInDB(data);
+      }
+    },
+
+    // mutationFn: async (data: Contact) => {
+    //   console.log("Mutation function called with data:", data);
+    //   if (editingId) {
+    //     const { error } = await supabase
+    //       .from("contacts")
+    //       .update(data)
+    //       .eq("id", editingId);
+    //     if (error) throw error;
+    //   } else {
+    //     const { error } = await supabase.from("contacts").insert(data);
+    //     if (error) throw error;
+    //   }
+    // },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      {
+        editingId && toast.success("Contact updated successfully");
+      }
+      {
+        !editingId && toast.success("Contact created successfully");
+      }
+      setEditingId(null);
+      form.reset(defaultContactValues);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteContactFromDB,
+
+    // async (id: string) => {
+    //   const { error } = await supabase.from("contacts").delete().eq("id", id);
+    //   if (error) throw error;
+    // },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      toast.error("Contact deleted The contact has been deleted successfully.");
+    },
+    // onError : (error)=>{
+    //   if(error.name === "AbortError")
+    // }
+  });
+
+  const form = useForm<Contact>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: defaultContactValues,
+  });
+
+  const { errors } = form.formState;
+  console.log("Validation errors:", errors); // Log validation errors
+
+  // images header
+
+  const handleImageUploadNew = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImageHeader(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `header-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("images")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage.from("images").getPublicUrl(filePath);
+
+      if (data?.publicUrl) {
+        form.setValue("icon", data.publicUrl);
+        toast("Image uploaded The image has been uploaded successfully.");
+      }
+    } catch (error) {
+      toast("Failed to upload image. Please try again.");
+    } finally {
+      setUploadingImageHeader(false);
+    }
+  };
+
+  const navItemMutation = useMutation({
+    // mutationFn: async (data: NavItem) => {
+    //   if (editingNavItem) {
+    //     const { error } = await supabase
+    //       .from("nav_items")
+    //       .update(data)
+    //       .eq("id", editingNavItem);
+    //     if (error) throw error;
+    //   } else {
+    //     const { error } = await supabase.from("nav_items").insert(data);
+    //     if (error) throw error;
+    //   }
+    // },
+
+    mutationFn: async (data: NavItem) => {
+      if (editingNavItem) {
+        await updateNavItemInDB(editingNavItem, data);
+      } else {
+        await insertNavItemToDB(data);
+      }
+    },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["navItems"] });
-      toast.success("Menu item added successfully");
-      setNewNavItem({ name: "", href: "", status: "draft" });
+      toast.success(
+        editingNavItem
+          ? "Nav item updated successfully"
+          : "Nav item added successfully"
+      );
+      setEditingNavItem(null);
+      navItemForm.reset(defaultNavItems);
     },
   });
 
-  const addNavSectionMutation = useMutation({
-    mutationFn: addNavSection,
+  const navSectionMutation = useMutation({
+    mutationFn: async (data: NavSection) => {
+      if (editingNavSection) {
+        const { error } = await supabase
+          .from("nav_sections")
+          .update(data)
+          .eq("id", editingNavSection);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("nav_sections").insert(data);
+        if (error) throw error;
+      }
+    },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["navItems"] });
       queryClient.invalidateQueries({ queryKey: ["navSections"] });
-      toast.success("Nav Section added successfully");
-      setNewNavSection({
-        name: "",
-        href: "",
-        status: "draft",
-        nav_item_id: null,
-      });
-    },
-  });
-
-  const addNavSubsectionMutation = useMutation({
-    mutationFn: addNavSubsection,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["navSubsections"] });
-      toast.success("Nav Subsection added successfully");
-
-      setNewNavSubsection({
-        name: "",
-        href: "",
-        section_id: "",
-        status: "draft",
-      });
+      toast.success(
+        editingNavSection
+          ? "Nav section updated successfully"
+          : "Nav section added successfully"
+      );
+      setEditingNavSection(null);
+      navSectionForm.reset(defaultNavSectionValues);
     },
   });
 
   const deleteNavItemMutation = useMutation({
-    mutationFn: deleteNavItem,
+    mutationFn: deleteNavItemFromDB,
+    //
+    //  async (id: string) => {
+    //   const { error } = await supabase.from("nav_items").delete().eq("id", id);
+    //   if (error) throw error;
+    // },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["navItems"] });
-      queryClient.invalidateQueries({ queryKey: ["navSections"] });
-      toast.success("NavItem deleted successfully");
+      toast.success("Nav item deleted successfully");
     },
   });
 
   const deleteNavSectionMutation = useMutation({
-    mutationFn: deleteNavSection,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["navSections"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["navSubsections"],
-      });
-      toast.success(" NavSection deleted successfully");
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("nav_sections")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
     },
-  });
-
-  const deleteNavSubsectionMutation = useMutation({
-    mutationFn: deleteNavSubsection,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["navSubsections"] });
-      toast.success(" NavSubsection deleted successfully");
-    },
-  });
-
-  const updateItemStatusMutation = useMutation({
-    mutationFn: ({
-      table,
-      id,
-      status,
-    }: {
-      table: string;
-      id: string;
-      status: "draft" | "published";
-    }) => updateItemStatus(table, id, status),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [variables.table] });
-    },
-  });
-
-  const updateNavSectionMenuItemMutation = useMutation({
-    mutationFn: ({
-      sectionId,
-      navItemId,
-    }: {
-      sectionId: string;
-      navItemId: string | null;
-    }) => updateNavSectionMenuItem(sectionId, navItemId),
-    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["navItems"] });
       queryClient.invalidateQueries({ queryKey: ["navSections"] });
+      toast.success("Nav section deleted successfully");
     },
   });
 
-  const filteredNavSections =
-    navSections?.filter((section) =>
-      section.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+  const filteredNavItems = navItems?.filter((item) =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const validateNavItem = (item: NavItem): boolean => {
-    // console.log("chcking different is ", item.name.trim(), item.name);
-    if (!item.name.trim() || !item.href.trim()) {
-      toast.error("Name and URL are required for Navigation Items");
-      return false;
-    }
-    return true;
-  };
+  const filteredNavSections = navSections.filter((section) =>
+    section.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const validateNavSection = (section: NavSection): boolean => {
-    if (!section.name.trim()) {
-      toast.error("Name is required for Navigation Sections");
-      return false;
-    }
-    return true;
-  };
-
-  const validateNavSubsection = (subsection: NavSubsection): boolean => {
-    if (!subsection.name.trim() || !subsection.section_id) {
-      toast.error("Name and Section are required for Navigation Subsections");
-      return false;
-    }
-    return true;
-  };
-
-  const handleAddNavItem = () => {
-    if (validateNavItem(newNavItem)) {
-      addNavItemMutation.mutate(newNavItem);
-    }
-  };
-
-  const handleAddNavSection = () => {
-    if (validateNavSection(newNavSection)) {
-      addNavSectionMutation.mutate(newNavSection);
+  const getIconComponent = (type: string, platform?: string) => {
+    switch (type) {
+      case "phone":
+        return <Phone className="h-4 w-4" />;
+      case "hours":
+        return <Clock className="h-4 w-4" />;
+      case "location":
+        return <MapPin className="h-4 w-4" />;
+      case "email":
+      case "support_email":
+        return <Mail className="h-4 w-4" />;
+      case "social":
+        switch (platform) {
+          case "facebook":
+            return <Facebook className="h-4 w-4" />;
+          case "twitter":
+            return <Twitter className="h-4 w-4" />;
+          case "instagram":
+            return <Instagram className="h-4 w-4" />;
+          default:
+            return <Globe className="h-4 w-4" />;
+        }
+      default:
+        return null;
     }
   };
 
-  const handleAddNavSubsection = () => {
-    if (validateNavSubsection(newNavSubsection)) {
-      addNavSubsectionMutation.mutate(newNavSubsection);
-    }
+  const onSubmit = (data: Contact) => {
+    // Remove any undefined or null values
+    const cleanedData = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v != null)
+    );
+    mutation.mutate(cleanedData as Contact);
   };
-
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6"> Menu CMS</h1>
-
-      <Accordion type="single" collapsible className="mb-6">
-        <AccordionItem value="nav-items">
-          <AccordionTrigger>Navigation Items</AccordionTrigger>
-          <AccordionContent>
-            <Card>
-              <CardHeader>
-                <CardTitle>Add Navigation Item</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <Input
-                    placeholder="Name"
-                    value={newNavItem.name}
-                    required
-                    onChange={(e) =>
-                      setNewNavItem({ ...newNavItem, name: e.target.value })
-                    }
-                  />
-                  <Input
-                    placeholder="URL"
-                    value={newNavItem.href}
-                    required
-                    onChange={(e) =>
-                      setNewNavItem({ ...newNavItem, href: e.target.value })
-                    }
-                  />
-                </div>
-                <Button onClick={handleAddNavItem} className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Navigation Item
-                </Button>
-              </CardContent>
-            </Card>
-            <ScrollArea className="h-[300px] mt-4">
-              {navItems?.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-2 border-b"
+    <div className="space-y-6">
+      <DevTool control={form.control} />
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="header">Header Details</TabsTrigger>
+          <TabsTrigger value="items">Navigation Items</TabsTrigger>
+          <TabsTrigger value="sections">Navigation Sections</TabsTrigger>
+        </TabsList>
+        <TabsContent value="header" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Information CMS</CardTitle>
+              <CardDescription>
+                Manage your contact information, business hours, location
+                details, social media links, and login button.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
                 >
-                  <span>
-                    {item.name} - {item.href}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={item.status === "published"}
-                      onCheckedChange={(checked) =>
-                        updateItemStatusMutation.mutate({
-                          table: "nav_items",
-                          id: item.id || "",
-                          status: checked ? "published" : "draft",
-                        })
-                      }
-                    />
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() =>
-                        deleteNavItemMutation.mutate(item.id || "")
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </ScrollArea>
-          </AccordionContent>
-        </AccordionItem>
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            if (value === "social") {
+                              form.setValue("platform", "facebook");
+                            } else if (value === "login") {
+                              form.setValue("button_style", "primary");
+                              form.setValue("position", "right");
+                            } else {
+                              form.setValue("platform", "custom");
+                              form.setValue("button_style", "outline");
+                            }
+                          }}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="phone">Phone</SelectItem>
+                            <SelectItem value="hours">Hours</SelectItem>
+                            <SelectItem value="location">Location</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="support_email">
+                              Support Email
+                            </SelectItem>
+                            <SelectItem value="social">Social Media</SelectItem>
+                            <SelectItem value="login">Login Button</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-        <AccordionItem value="nav-sections">
-          <AccordionTrigger>Navigation Sections</AccordionTrigger>
-          <AccordionContent>
-            <Card>
-              <CardHeader>
-                <CardTitle>Add Navigation Section</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <Input
-                    placeholder="Name"
-                    value={newNavSection.name}
-                    onChange={(e) =>
-                      setNewNavSection({
-                        ...newNavSection,
-                        name: e.target.value,
-                      })
-                    }
-                  />
-                  <Input
-                    placeholder="URL"
-                    value={newNavSection.href}
-                    onChange={(e) =>
-                      setNewNavSection({
-                        ...newNavSection,
-                        href: e.target.value,
-                      })
-                    }
-                  />
-                  <Select
-                    value={newNavSection.nav_item_id || ""}
-                    onValueChange={(value) =>
-                      setNewNavSection({ ...newNavSection, nav_item_id: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Menu Item" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {navItems?.map((item) => (
-                        <SelectItem key={item.id} value={item.id || ""}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleAddNavSection} className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Navigation Section
-                </Button>
-              </CardContent>
-            </Card>
-            <div className="relative mb-4 mt-4">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Search sections..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <ScrollArea className="h-[200px]">
-              {filteredNavSections.map((section) => (
-                <div
-                  key={section.id}
-                  className="flex items-center justify-between p-2 border-b"
-                >
-                  <span>
-                    {section.name} - {section.href}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <Select
-                      value={section.nav_item_id || ""}
-                      onValueChange={(value) =>
-                        updateNavSectionMenuItemMutation.mutate({
-                          sectionId: section.id || "",
-                          navItemId: value || null,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Select Menu Item" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="None">None</SelectItem>
-                        {navItems?.map((item) => (
-                          <SelectItem key={item.id} value={item.id || ""}>
-                            {item.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Switch
-                      checked={section.status === "published"}
-                      onCheckedChange={(checked) =>
-                        updateItemStatusMutation.mutate({
-                          table: "nav_sections",
-                          id: section.id || "",
-                          status: checked ? "published" : "draft",
-                        })
-                      }
+                  {form.watch("type") === "social" && (
+                    <FormField
+                      control={form.control}
+                      name="platform"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Platform</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value as string}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select platform" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="facebook">Facebook</SelectItem>
+                              <SelectItem value="twitter">Twitter</SelectItem>
+                              <SelectItem value="instagram">
+                                Instagram
+                              </SelectItem>
+                              <SelectItem value="custom">Custom</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() =>
-                        deleteNavSectionMutation.mutate(section.id || "")
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </ScrollArea>
-          </AccordionContent>
-        </AccordionItem>
+                  )}
 
-        <AccordionItem value="nav-subsections">
-          <AccordionTrigger>Navigation Subsections</AccordionTrigger>
-          <AccordionContent>
-            <Card>
-              <CardHeader>
-                <CardTitle>Add Navigation Subsection</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <Input
-                    placeholder="Name"
-                    value={newNavSubsection.name}
-                    onChange={(e) =>
-                      setNewNavSubsection({
-                        ...newNavSubsection,
-                        name: e.target.value,
-                      })
-                    }
-                  />
-                  <Input
-                    placeholder="URL"
-                    value={newNavSubsection.href}
-                    onChange={(e) =>
-                      setNewNavSubsection({
-                        ...newNavSubsection,
-                        href: e.target.value,
-                      })
-                    }
-                  />
-                  <Select
-                    value={newNavSubsection.section_id}
-                    onValueChange={(value) =>
-                      setNewNavSubsection({
-                        ...newNavSubsection,
-                        section_id: value,
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Section" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {navSections?.map((section) => (
-                        <SelectItem key={section.id} value={section.id || ""}>
-                          {section.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleAddNavSubsection} className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Subsection
-                </Button>
-              </CardContent>
-            </Card>
-            <ScrollArea className="h-[200px] mt-4">
-              {navSubsections?.map((subsection) => (
-                <div
-                  key={subsection.id}
-                  className="flex items-center justify-between p-2 border-b"
-                >
-                  <span>
-                    {subsection.name} - {subsection.href} (Section:{" "}
-                    {
-                      navSections?.find((s) => s.id === subsection.section_id)
-                        ?.name
-                    }
-                    )
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={subsection.status === "published"}
-                      onCheckedChange={(checked) =>
-                        updateItemStatusMutation.mutate({
-                          table: "nav_subsections",
-                          id: subsection.id || "",
-                          status: checked ? "published" : "draft",
-                        })
-                      }
+                  {form.watch("type") === "login" && (
+                    <FormField
+                      control={form.control}
+                      name="button_style"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Button Style</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value as string}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select style" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="primary">Primary</SelectItem>
+                              {/* <SelectItem value="secondary">
+                                Secondary
+                              </SelectItem> */}
+                              <SelectItem value="outline">Outline</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() =>
-                        deleteNavSubsectionMutation.mutate(subsection.id || "")
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </ScrollArea>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name="label"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Label</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={
+                              form.watch("type") === "login"
+                                ? "Login"
+                                : "Enter label"
+                            }
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="value"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {form.watch("type") === "login" ? "URL" : "Value"}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={
+                              form.watch("type") === "login"
+                                ? "Enter login URL"
+                                : "Enter value"
+                            }
+                            type={
+                              form.watch("type") === "login" ? "text" : "text"
+                            }
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="display_order"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Display Order</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="Enter display order"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseInt(e.target.value, 10))
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="position"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Position</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="left">Left</SelectItem>
+                            <SelectItem value="right">Right</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch("type") !== "login" && (
+                    <div>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUploadNew}
+                        disabled={uploadingImageHeader}
+                      />
+                    </div>
+                  )}
+
+                  <Button type="submit" disabled={mutation.isPending}>
+                    {editingId ? "Update" : "Create"} Entry
+                  </Button>
+                </form>
+              </Form>
+
+              <div className="mt-8 space-y-4">
+                {contacts.map((contact) => (
+                  <Card key={contact.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-4">
+                        {getIconComponent(
+                          contact.type,
+                          contact.platform as string
+                        )}
+                        <div>
+                          <p className="font-medium">{contact.label}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {contact.type === "login" ? "URL: " : ""}
+                            {contact.value}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Type: {contact.type}
+                            {contact.button_style
+                              ? `, Style: ${contact.button_style}`
+                              : ""}
+                            , Position: {contact.position}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {/* {contact.type === "login" && (
+                          <Button
+                            variant={
+                              contact.buttonStyle as
+                                | "primary"
+                                | "secondary"
+                                | "outline"
+                            }
+                            size="sm"
+                            asChild
+                          >
+                            <a
+                              href={contact.value}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Preview
+                            </a>
+                          </Button>
+                        )} */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingId(contact.id);
+                            form.reset(contact as any);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          // onClick={() => {
+                          //   if (
+                          //     window.confirm(
+                          //       "Are you sure you want to delete this entry?"
+                          //     )
+                          //   ) {
+                          //     deleteMutation.mutate(contact.id);
+                          //   }
+                          // }}
+
+                          onClick={() => {
+                            setDeleteDialogOpen(true);
+                            setContactToDelete(contact.id);
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="items">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {editingNavItem
+                  ? "Edit Navigation Item"
+                  : "Add New Navigation Item"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Form {...navItemForm}>
+                <form
+                  onSubmit={navItemForm.handleSubmit((data) =>
+                    navItemMutation.mutate(data)
+                  )}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={navItemForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Navigation item name"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Enter the name for this navigation item.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={navItemForm.control}
+                    name="href"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL</FormLabel>
+                        <FormControl>
+                          <Input placeholder="/example-url" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Enter the URL for this navigation item.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={navItemForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Set the status of this navigation item.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={navItemForm.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Priority</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter Priority ..."
+                            value={field.value?.toString() ?? ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              field.onChange(
+                                value === "" ? null : Number(value)
+                              );
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Enter the Priority for this navigation item.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit">
+                    {editingNavItem
+                      ? "Update Navigation Item"
+                      : "Add Navigation Item"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Navigation Items</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4">
+                <Input
+                  placeholder="Search navigation items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <ScrollArea className="h-[400px]">
+                {filteredNavItems.map((item) => (
+                  <Card key={item.id} className="mb-4">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold">{item.name}</h3>
+                          <p className="text-sm text-gray-500">{item.href}</p>
+                          <p className="text-sm text-gray-500">
+                            Status: {item.status}
+                          </p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setEditingNavItem(item.id);
+                              navItemForm.reset(item as any);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive">Delete</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Are you absolutely sure?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will
+                                  permanently delete the navigation item and all
+                                  its associated sections.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    deleteNavItemMutation.mutate(item.id)
+                                  }
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sections">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {editingNavSection
+                  ? "Edit Navigation Section"
+                  : "Add New Navigation Section"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Form {...navSectionForm}>
+                <form
+                  onSubmit={navSectionForm.handleSubmit((data) =>
+                    navSectionMutation.mutate(data)
+                  )}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={navSectionForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Navigation section name"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Enter the name for this navigation section.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={navSectionForm.control}
+                    name="href"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL</FormLabel>
+                        <FormControl>
+                          <Input placeholder="/example-url" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Enter the URL for this navigation section.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={navSectionForm.control}
+                    name="slug"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Slug</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="navigation-section-slug"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Enter the slug for this navigation section.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={navSectionForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Set the status of this navigation section.
+                        </FormDescription>
+
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={navSectionForm.control}
+                    name="parent_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Parent Navigation Item</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a parent item" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {navItems.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {item.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Choose the parent navigation item for this section
+                          (optional).
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit">
+                    {editingNavSection
+                      ? "Update Navigation Section"
+                      : "Add Navigation Section"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Navigation Sections</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4">
+                <Input
+                  placeholder="Search navigation sections..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <ScrollArea className="h-[400px]">
+                {filteredNavSections.map((section) => (
+                  <Card key={section.id} className="mb-4">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold">
+                            {section.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {section.href}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Slug: {section.slug}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Status: {section.status}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Parent:{" "}
+                            {navItems.find(
+                              (item) => item.id === section.parent_id
+                            )?.name || "None"}
+                          </p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setEditingNavSection(section.id);
+                              navSectionForm.reset(section as any);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive">Delete</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Are you absolutely sure?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will
+                                  permanently delete the navigation section and
+                                  all its associated products.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    deleteNavSectionMutation.mutate(section.id)
+                                  }
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <DeleteDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={() => {
+          if (contactToDelete) {
+            deleteMutation.mutate(contactToDelete);
+            setDeleteDialogOpen(false);
+            setContactToDelete(null);
+          }
+        }}
+      />
     </div>
   );
 }
-
-// "use client";
-// import React, { useState, useEffect } from "react";
-
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import {
-//   Accordion,
-//   AccordionContent,
-//   AccordionItem,
-//   AccordionTrigger,
-// } from "@/components/ui/accordion";
-// import { PlusCircle, Trash2 } from "lucide-react";
-// import { supabase } from "@/lib/supabase";
-
-// interface MenuItem {
-//   name: string;
-//   href: string;
-//   parent_id: string | null;
-//   order_index: number;
-// }
-
-// interface Category {
-//   name: string;
-//   href: string;
-//   order_index: number;
-// }
-
-// interface Subcategory {
-//   name: string;
-//   href: string;
-//   category_id: string;
-//   order_index: number;
-// }
-
-// export default function MenuCMS() {
-//   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-//   const [categories, setCategories] = useState<Category[]>([]);
-//   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-//   const [newMenuItem, setNewMenuItem] = useState<MenuItem>({
-//     name: "",
-//     href: "",
-//     parent_id: null,
-//     order_index: 0,
-//   });
-//   const [newCategory, setNewCategory] = useState<Category>({
-//     name: "",
-//     href: "",
-//     order_index: 0,
-//   });
-//   const [newSubcategory, setNewSubcategory] = useState<Subcategory>({
-//     name: "",
-//     href: "",
-//     category_id: "",
-//     order_index: 0,
-//   });
-
-//   useEffect(() => {
-//     fetchData();
-//   }, []);
-
-//   const fetchData = async () => {
-//     const { data: menuData } = await supabase
-//       .from("menu_itemsd")
-//       .select("*")
-//       .order("order_index");
-//     const { data: categoryData } = await supabase
-//       .from("categoriesd")
-//       .select("*")
-//       .order("order_index");
-//     const { data: subcategoryData } = await supabase
-//       .from("subcategoriesd")
-//       .select("*")
-//       .order("order_index");
-
-//     setMenuItems(menuData || []);
-//     setCategories(categoryData || []);
-//     setSubcategories(subcategoryData || []);
-//   };
-
-//   const addMenuItem = async () => {
-//     const { data, error } = await supabase
-//       .from("menu_itemsd")
-//       .insert({ ...newMenuItem });
-//     if (error) console.error("Error adding menu item:", error);
-//     else {
-//       setMenuItems([
-//         ...menuItems,
-//         data?.[0] ?? { name: "", href: "", parent_id: null, order_index: 0 },
-//       ]);
-//       setNewMenuItem({ name: "", href: "", parent_id: null, order_index: 0 });
-//     }
-//   };
-
-//   const addCategory = async () => {
-//     const { data, error } = await supabase
-//       .from("categoriesd")
-//       .insert({ ...newCategory });
-//     if (error) console.error("Error adding category:", error);
-//     else {
-//       setCategories([
-//         ...categories,
-//         data?.[0] ?? {
-//           name: "",
-//           href: "",
-
-//           order_index: 0,
-//         },
-//       ]);
-//       setNewCategory({ name: "", href: "", order_index: 0 });
-//     }
-//   };
-
-//   const addSubcategory = async () => {
-//     const { data, error } = await supabase
-//       .from("subcategoriesd")
-//       .insert({ ...newSubcategory });
-//     if (error) console.error("Error adding subcategory:", error);
-//     else {
-//       setSubcategories([...subcategories, data?.[0] as {}]);
-//       setNewSubcategory({ name: "", href: "", category_id: "",order_index:0 });
-//     }
-//   };
-
-//   const deleteMenuItem = async (id) => {
-//     const { error } = await supabase.from("menu_itemsd").delete().match({ id });
-//     if (error) console.error("Error deleting menu item:", error);
-//     else setMenuItems(menuItems.filter((item) => item.id !== id));
-//   };
-
-//   const deleteCategory = async (id) => {
-//     const { error } = await supabase.from("categoriesd").delete().match({ id });
-//     if (error) console.error("Error deleting category:", error);
-//     else {
-//       setCategories(categories.filter((category) => category.id !== id));
-//       setSubcategories(
-//         subcategories.filter((subcategory) => subcategory.category_id !== id)
-//       );
-//     }
-//   };
-
-//   const deleteSubcategory = async (id) => {
-//     const { error } = await supabase
-//       .from("subcategoriesd")
-//       .delete()
-//       .match({ id });
-//     if (error) console.error("Error deleting subcategory:", error);
-//     else
-//       setSubcategories(
-//         subcategories.filter((subcategory) => subcategory.id !== id)
-//       );
-//   };
-
-//   return (
-//     <div className="container mx-auto p-4">
-//       <h1 className="text-3xl font-bold mb-6">Menu CMS</h1>
-
-//       <Accordion type="single" collapsible className="mb-6">
-//         <AccordionItem value="menu-items">
-//           <AccordionTrigger>Menu Items</AccordionTrigger>
-//           <AccordionContent>
-//             <Card>
-//               <CardHeader>
-//                 <CardTitle>Add Menu Item</CardTitle>
-//               </CardHeader>
-//               <CardContent>
-//                 <div className="flex space-x-2 mb-4">
-//                   <Input
-//                     placeholder="Name"
-//                     value={newMenuItem.name}
-//                     onChange={(e) =>
-//                       setNewMenuItem({ ...newMenuItem, name: e.target.value })
-//                     }
-//                   />
-//                   <Input
-//                     placeholder="URL"
-//                     value={newMenuItem.href}
-//                     onChange={(e) =>
-//                       setNewMenuItem({ ...newMenuItem, href: e.target.value })
-//                     }
-//                   />
-//                   <Button onClick={addMenuItem}>
-//                     <PlusCircle className="mr-2 h-4 w-4" /> Add
-//                   </Button>
-//                 </div>
-//                 {menuItems.map((item) => (
-//                   <div
-//                     key={item.id}
-//                     className="flex items-center justify-between p-2 border-b"
-//                   >
-//                     <span>
-//                       {item.name} - {item.href}
-//                     </span>
-//                     <Button
-//                       variant="destructive"
-//                       size="sm"
-//                       onClick={() => deleteMenuItem(item.id)}
-//                     >
-//                       <Trash2 className="h-4 w-4" />
-//                     </Button>
-//                   </div>
-//                 ))}
-//               </CardContent>
-//             </Card>
-//           </AccordionContent>
-//         </AccordionItem>
-
-//         <AccordionItem value="categories">
-//           <AccordionTrigger>Categories</AccordionTrigger>
-//           <AccordionContent>
-//             <Card>
-//               <CardHeader>
-//                 <CardTitle>Add Category</CardTitle>
-//               </CardHeader>
-//               <CardContent>
-//                 <div className="flex space-x-2 mb-4">
-//                   <Input
-//                     placeholder="Name"
-//                     value={newCategory.name}
-//                     onChange={(e) =>
-//                       setNewCategory({ ...newCategory, name: e.target.value })
-//                     }
-//                   />
-//                   <Input
-//                     placeholder="URL"
-//                     value={newCategory.href}
-//                     onChange={(e) =>
-//                       setNewCategory({ ...newCategory, href: e.target.value })
-//                     }
-//                   />
-//                   <Button onClick={addCategory}>
-//                     <PlusCircle className="mr-2 h-4 w-4" /> Add
-//                   </Button>
-//                 </div>
-//                 {categories.map((category) => (
-//                   <div
-//                     key={category.id}
-//                     className="flex items-center justify-between p-2 border-b"
-//                   >
-//                     <span>
-//                       {category.name} - {category.href}
-//                     </span>
-//                     <Button
-//                       variant="destructive"
-//                       size="sm"
-//                       onClick={() => deleteCategory(category.id)}
-//                     >
-//                       <Trash2 className="h-4 w-4" />
-//                     </Button>
-//                   </div>
-//                 ))}
-//               </CardContent>
-//             </Card>
-//           </AccordionContent>
-//         </AccordionItem>
-
-//         <AccordionItem value="subcategories">
-//           <AccordionTrigger>Subcategories</AccordionTrigger>
-//           <AccordionContent>
-//             <Card>
-//               <CardHeader>
-//                 <CardTitle>Add Subcategory</CardTitle>
-//               </CardHeader>
-//               <CardContent>
-//                 <div className="flex space-x-2 mb-4">
-//                   <Input
-//                     placeholder="Name"
-//                     value={newSubcategory.name}
-//                     onChange={(e) =>
-//                       setNewSubcategory({
-//                         ...newSubcategory,
-//                         name: e.target.value,
-//                       })
-//                     }
-//                   />
-//                   <Input
-//                     placeholder="URL"
-//                     value={newSubcategory.href}
-//                     onChange={(e) =>
-//                       setNewSubcategory({
-//                         ...newSubcategory,
-//                         href: e.target.value,
-//                       })
-//                     }
-//                   />
-//                   <select
-//                     className="border rounded px-2 py-1"
-//                     value={newSubcategory.category_id}
-//                     onChange={(e) =>
-//                       setNewSubcategory({
-//                         ...newSubcategory,
-//                         category_id: e.target.value,
-//                       })
-//                     }
-//                   >
-//                     <option value="">Select Category</option>
-//                     {categories.map((category) => (
-//                       <option key={category.id} value={category.id}>
-//                         {category.name}
-//                       </option>
-//                     ))}
-//                   </select>
-//                   <Button onClick={addSubcategory}>
-//                     <PlusCircle className="mr-2 h-4 w-4" /> Add
-//                   </Button>
-//                 </div>
-//                 {subcategories?.map((subcategory) => (
-//                   <div
-//                     key={subcategory.id}
-//                     className="flex items-center justify-between p-2 border-b"
-//                   >
-//                     <span>
-//                       {subcategory.name} - {subcategory.href} (Category:{" "}
-//                       {
-//                         categories.find((c) => c.id === subcategory.category_id)
-//                           ?.name
-//                       }
-//                       )
-//                     </span>
-//                     <Button
-//                       variant="destructive"
-//                       size="sm"
-//                       onClick={() => deleteSubcategory(subcategory.id)}
-//                     >
-//                       <Trash2 className="h-4 w-4" />
-//                     </Button>
-//                   </div>
-//                 ))}
-//               </CardContent>
-//             </Card>
-//           </AccordionContent>
-//         </AccordionItem>
-//       </Accordion>
-//     </div>
-//   );
-// }

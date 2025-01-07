@@ -80,7 +80,7 @@ In your `package.json` file, add the following command under the `scripts` secti
 ```
 
 - This command uses the Supabase CLI to generate types from your Supabase project and save them into a `database.types.ts` file.
-- Replace `pknbhkxuqdmghngwniok` with your actual Supabase **project ID**.
+- Replace `pknbhkxuqfgsgsgfk` with your actual Supabase **project ID**.
 
 For more details, you can visit the official Supabase documentation: [Supabase Documentation](https://supabase.com/docs/reference/javascript/initializing).
 

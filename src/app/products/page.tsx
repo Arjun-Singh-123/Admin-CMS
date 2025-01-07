@@ -125,11 +125,11 @@ export default function ProductManagement() {
       if (editingProduct) {
         const { error } = await supabase
           .from("products")
-          .update(data)
+          .update(data as any)
           .eq("id", editingProduct);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("products").insert(data);
+        const { error } = await supabase.from("products").insert(data as any);
         if (error) throw error;
       }
     },
@@ -145,11 +145,13 @@ export default function ProductManagement() {
       if (editingProductDetail) {
         const { error } = await supabase
           .from("product_details")
-          .update(data)
+          .update(data as any)
           .eq("id", editingProductDetail);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("product_details").insert(data);
+        const { error } = await supabase
+          .from("product_details")
+          .insert(data as any);
         if (error) throw error;
       }
     },
@@ -259,7 +261,7 @@ export default function ProductManagement() {
   console.log("productDetailForm.watch", productDetailForm.watch());
   console.log("productDetailForm.getValue ", productDetailForm.getValues());
 
-  const availableProducts = products.filter(
+  const availableProducts = products?.filter(
     (product) =>
       !productDetails.some((detail) => detail.product_id === product.id)
   );
@@ -298,10 +300,10 @@ export default function ProductManagement() {
   );
 
   const addSpecCategory = () => {
-    const category = productDetailForm.watch("newSpecCategory");
+    const category = productDetailForm.watch("newSpecCategory" as any);
     if (category && !specCategories.includes(category)) {
       setSpecCategories([...specCategories, category]);
-      productDetailForm.setValue("newSpecCategory", "");
+      productDetailForm.setValue("newSpecCategory" as any, "");
     }
   };
 
@@ -352,7 +354,7 @@ export default function ProductManagement() {
               <Form {...productForm}>
                 <form
                   onSubmit={productForm.handleSubmit((data) =>
-                    productMutation.mutate(data)
+                    productMutation.mutate(data as any)
                   )}
                   className="space-y-8"
                 >
@@ -433,9 +435,9 @@ export default function ProductManagement() {
                             {navSubsections?.map((subsection) => (
                               <SelectItem
                                 key={subsection.id}
-                                value={subsection.id}
+                                value={subsection.id as string}
                               >
-                                {subsection.name}
+                                {subsection?.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -517,20 +519,20 @@ export default function ProductManagement() {
                       <p className="text-sm font-medium">
                         Price: ${product.price}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      {/* <p className="text-sm text-gray-500">
                         Category:{" "}
                         {
                           navSubsections.find(
                             (s) => s.id === product.nav_subsection_id
                           )?.name
                         }
-                      </p>
+                      </p> */}
                       <div className="flex space-x-2 mt-2">
                         <Button
                           variant="outline"
                           onClick={() => {
                             setEditingProduct(product.id);
-                            productForm.reset(product);
+                            productForm.reset(product as any);
                           }}
                         >
                           Edit
@@ -582,7 +584,7 @@ export default function ProductManagement() {
               <Form {...productDetailForm}>
                 <form
                   onSubmit={productDetailForm.handleSubmit((data) =>
-                    productDetailMutation.mutate(data)
+                    productDetailMutation.mutate(data as any)
                   )}
                   className="space-y-8"
                 >
@@ -827,7 +829,9 @@ export default function ProductManagement() {
                     <div className="flex space-x-2 mb-2">
                       <Input
                         placeholder="New Category"
-                        {...productDetailForm.register("newSpecCategory")}
+                        {...productDetailForm.register(
+                          "newSpecCategory" as any
+                        )}
                       />
                       <Button type="button" onClick={addSpecCategory}>
                         Add Category
@@ -1035,7 +1039,7 @@ export default function ProductManagement() {
                           variant="outline"
                           onClick={() => {
                             setEditingProductDetail(detail.id);
-                            productDetailForm.reset(detail);
+                            productDetailForm.reset(detail as any);
                           }}
                         >
                           Edit

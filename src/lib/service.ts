@@ -169,3 +169,15 @@ export const uploadImagesAndGetUrls = async (
 //       },
 //     }));
 //   };
+export const fetchData = async () => {
+  try {
+    const response = await fetch("http://localhost:3000/api");
+    if (!response.ok) {
+      throw new Error("Failed to fetch data");
+    }
+    const data = await response.json();
+    return data ?? [];
+  } catch (err) {
+    console.error(err);
+  }
+};
