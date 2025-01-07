@@ -1,10 +1,8 @@
 import { getRentalById, updateRental } from "@/services/rental-services";
 import { NextResponse } from "next/server";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   console.log("checking id", params.id);
   try {
     const rental = await getRentalById(params.id);
@@ -20,10 +18,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   console.log("PATCH request", params.id);
   try {
     const data = await request.json();

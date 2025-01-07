@@ -26,18 +26,20 @@ const Ott = () => {
   };
 
   return (
-    <div>
+    (<div>
       {otp.map((item, index) => (
         <input
           type="text"
           className="text-black"
           maxLength={1}
           value={item}
-          ref={(element) => (inputRefs.current[index] = element)}
+          ref={element => {
+            (inputRefs.current[index] = element);
+          }}
           onChange={(e) => handleChange(e, index)}
         />
       ))}
-    </div>
+    </div>)
   );
 };
 
