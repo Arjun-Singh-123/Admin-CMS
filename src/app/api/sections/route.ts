@@ -1,3 +1,7 @@
+import {
+  fetchDashBoardSectionsAndNavItems,
+  updateDashBoardSectionStatus,
+} from "@/services/dashboard-services";
 import { NextResponse } from "next/server";
 // import {
 //   getSections,
@@ -5,14 +9,15 @@ import { NextResponse } from "next/server";
 //   updateSection,
 //   deleteSection,
 // } from "@/services/section-services";
-import {
-  fetchSectionsAndNavItemsDashboard,
-  updateSectionStatusDashboard,
-} from "@/services/dashboard-services";
+// import {
+//   fetchSectionsAndNavItemsDashboard,
+//   updateSectionStatusDashboard,
+// } from "@/services/dashboard-services";
 
 export async function GET() {
   try {
-    const sections = await fetchSectionsAndNavItemsDashboard();
+    // const sections = await fetchSectionsAndNavItemsDashboard();
+    const sections = await fetchDashBoardSectionsAndNavItems();
     return NextResponse.json(sections);
   } catch (error) {
     console.error("Error fetching sections:", error);
@@ -26,7 +31,10 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { sectionId, status } = await request.json();
-    const newSection = await updateSectionStatusDashboard(sectionId, status);
+    const newSection = await updateDashBoardSectionStatus({
+      sectionId,
+      status,
+    });
     return NextResponse.json(newSection, { status: 201 });
   } catch (error) {
     console.error("Error creating section:", error);

@@ -1,5 +1,7 @@
 "use server";
+import { NavItem, NavSection } from "@/types/dashboard";
 import { query } from "../db";
+import { Contact } from "@/schemas/enhanced-menu-schema";
 
 export async function fetchNavItemsFromDB(): Promise<NavItem[]> {
   const sqlQuery = `
@@ -116,7 +118,7 @@ export async function fetchContactsFromDB(): Promise<Contact[]> {
     console.log("Fetched contacts:", result);
 
     // Return the result (assuming it matches the structure of the Contact interface)
-    return result;
+    return result as any;
   } catch (error) {
     // Handle errors and log them for debugging purposes
     console.error("Error fetching contacts:", error);
@@ -158,11 +160,8 @@ export async function insertContactInDB(
       RETURNING id
     `;
 
-
-    
-
   const result = await query(sqlQuery, values);
-  return result[0].id;
+  return (result?.[0] as any)?.id;
 }
 
 export async function updateContactInDB(
@@ -271,7 +270,7 @@ export async function fetchHeaderNavSectionsFromDB(): Promise<NavSection[]> {
 
     console.log(result); // Log the actual result, not the promise
 
-    return result; // Return the resolved result
+    return result as any; // Return the resolved result
   } catch (error) {
     console.error(error);
     throw error; // Optional: rethrow the error to handle it upstream

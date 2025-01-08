@@ -21,6 +21,7 @@ export interface NavSection {
   name: string;
   href: string;
   status: string;
+  parent_id?: string;
   products: Product[];
 }
 

@@ -8,10 +8,12 @@ import {
   updateNavSectionInDB,
   deleteNavSectionFromDB,
   fetchContactsFromDB,
-  insertContactToDB,
   updateContactInDB,
   deleteContactFromDB,
+  insertContactInDB,
 } from "@/lib/queries/navigation";
+import { Contact } from "@/schemas/enhanced-menu-schema";
+import { NavItem, NavSection } from "@/types/dashboard";
 
 export async function fetchNavItems(): Promise<NavItem[]> {
   return fetchNavItemsFromDB();
@@ -56,7 +58,7 @@ export async function fetchContacts(): Promise<Contact[]> {
 }
 
 export async function createContact(data: Omit<Contact, "id">): Promise<void> {
-  await insertContactToDB(data);
+  await insertContactInDB(data);
 }
 
 export async function updateContact(

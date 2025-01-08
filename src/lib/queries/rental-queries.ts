@@ -1,8 +1,7 @@
 import { Feature } from "@/services/feature-services";
-import { RentalPage } from "@/services/rental-services";
 import { BASE_API_URL } from "@/types/benefit-types";
 
-export async function fetchRentalPages(): Promise<RentalPage[]> {
+export async function fetchRentalPages(): Promise<any[]> {
   const response = await fetch(`${BASE_API_URL}/rental-pages`);
   if (!response.ok) {
     throw new Error("Failed to fetch rental pages");
@@ -19,9 +18,9 @@ export async function fetchFeatures(): Promise<Feature[]> {
 }
 
 export async function createRentalPage(
-  page: Omit<RentalPage, "id" | "features">,
+  page: Omit<any, "id" | "features">,
   featureIds: number[]
-): Promise<RentalPage> {
+): Promise<any> {
   const response = await fetch(`${BASE_API_URL}/rental-pages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -35,9 +34,9 @@ export async function createRentalPage(
 
 export async function updateRentalPage(
   id: number,
-  page: Omit<RentalPage, "id" | "features">,
+  page: Omit<any, "id" | "features">,
   featureIds: number[]
-): Promise<RentalPage> {
+): Promise<any> {
   const response = await fetch(`${BASE_API_URL}/rental-pages`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

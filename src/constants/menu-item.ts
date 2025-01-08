@@ -98,6 +98,18 @@ export const menuGroups = [
         label: "Products",
         route: "/prod",
       },
+      {
+        label: "Membership Fees",
+        route: "/membership-cms",
+      },
+      {
+        label: "Rentals Fee",
+        route: "/rentals",
+      },
+      {
+        label: "Contacts-Info",
+        route: "/contacts-info",
+      },
     ],
   },
   // {

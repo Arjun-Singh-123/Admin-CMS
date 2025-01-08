@@ -129,7 +129,7 @@ export const defaultRentalSchema: FormValues = {
       hidden: false,
     },
   ],
-  category_info: {
+  categoryInfo: {
     title: "Our Fleet",
     description:
       "Enjoy a day out on the waves—without owning your own boat! Our rental services are perfect for people looking to experience the joys of sailing without worrying about the upkeep, capital investment, and ownership of an expensive sailboat. All prices below include insurance and cleanup after your charter.",

@@ -21,6 +21,7 @@ const allowedHostnames = [
   "lreclvqyoujucqaggxfy.supabase.co",
   "dev.windwardsailingclub.com",
   "pknbhkxuqdmghngwniok.supabase.co",
+  "sailing-club.s3.us-west-2.amazonaws.com",
 ];
 
 const nextConfig = {
@@ -30,7 +31,7 @@ const nextConfig = {
       hostname,
     })),
     // unoptimized: true,
-  }, 
+  },
   // output: "export",
   eslint: {
     ignoreDuringBuilds: true,

@@ -1,9 +1,9 @@
 import { getClient } from "@/lib/db";
- 
+
 export async function GET(request: Request) {
   try {
     console.log("request checking", request);
- 
+
     const client = await getClient();
 
     // Log basic connection information
@@ -11,11 +11,11 @@ export async function GET(request: Request) {
     console.log("Client connected to database: ", client);
     // Log detailed connection information
     console.log("Connected to PostgreSQL database!");
-    console.log("Client connected to database: ", client.database);
-    console.log("Host: ", client.host);
-    console.log("Port: ", client.port);
-    console.log("SSL Connection: ", client.ssl);
-    console.log("User: ", client.user);
+    // console.log("Client connected to database: ", client.database);
+    // console.log("Host: ", client.host);
+    // console.log("Port: ", client.port);
+    // console.log("SSL Connection: ", client.ssl);
+    // console.log("User: ", client.user);
 
     // Fetch database version and server details
     const dbVersionResult = await client.query("SELECT version();");
@@ -33,6 +33,10 @@ export async function GET(request: Request) {
     client.release();
     return Response.json({ data: result.rows });
   } catch (error) {
-    return Response.json({ error: error.message });
+    if (error instanceof Error) {
+      return Response.json({ error: error.message });
+    } else {
+      return Response.json({ error: String(error) });
+    }
   }
 }

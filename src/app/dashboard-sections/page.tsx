@@ -27,7 +27,7 @@ const fetchSections = async () => {
 };
 
 // Add new section
-const addSection = async (newSection) => {
+const addSection = async (newSection: any) => {
   const { data, error } = await supabase
     .from("sections")
     .insert(newSection)
@@ -38,7 +38,7 @@ const addSection = async (newSection) => {
 };
 
 // Update section
-const updateSection = async (updatedSection) => {
+const updateSection = async (updatedSection: any) => {
   const { data, error } = await supabase
     .from("sections")
     .update(updatedSection)
@@ -50,7 +50,7 @@ const updateSection = async (updatedSection) => {
 };
 
 // Delete section
-const deleteSection = async (id) => {
+const deleteSection = async (id: any) => {
   const { error } = await supabase.from("sections").delete().eq("id", id);
 
   if (error) throw new Error(error.message);
@@ -97,21 +97,21 @@ export default function SectionsCMS() {
     }
   };
 
-  const handleUpdateOrder = (id, newOrder) => {
+  const handleUpdateOrder = (id: any, newOrder: any) => {
     const section = sections.find((s) => s.id === id);
     if (section && newOrder >= 0 && newOrder < sections.length) {
       updateMutation.mutate({ ...section, display_order: newOrder });
     }
   };
 
-  const handleToggleVisibility = (id, newVisibility) => {
+  const handleToggleVisibility = (id: any, newVisibility: any) => {
     const section = sections.find((s) => s.id === id);
     if (section) {
       updateMutation.mutate({ ...section, is_visible: newVisibility });
     }
   };
 
-  const handleDeleteSection = (id) => {
+  const handleDeleteSection = (id: any) => {
     if (window.confirm("Are you sure you want to delete this section?")) {
       deleteMutation.mutate(id);
     }

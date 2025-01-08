@@ -74,6 +74,11 @@ import {
   updateContactInDB,
   updateNavItemInDB,
 } from "@/lib/queries/navigation";
+import {
+  Contact,
+  contactSchema,
+  defaultContactValues,
+} from "@/schemas/enhanced-menu-schema";
 
 const navItemSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -86,7 +91,7 @@ const navSectionSchema = z.object({
   name: z.string().min(1, "Name is required"),
   href: z.string().min(1, "URL is required"),
   status: z.enum(["draft", "published"]),
-  slug: z.string().min(1, "Slug is required"),
+  slug: z.string().optional(),
   parent_id: z.string().optional(),
 });
 
@@ -109,48 +114,6 @@ const defaultNavItems = {
 };
 
 // Updated contact schema based on the latest requirements
-
-export const contactSchema = z.object({
-  id: z.string().uuid().optional(),
-  icon: z.string().nullable(),
-  label: z.string().min(1, "Label is required"),
-  value: z.string().optional(),
-  type: z.enum([
-    "phone",
-    "hours",
-    "location",
-    "email",
-    "support_email",
-    "social",
-    "login",
-  ]),
-  platform: z.enum(["facebook", "twitter", "instagram", "custom"]).nullable(),
-  status: z.enum(["draft", "published"]).default("published"),
-  position: z.enum(["left", "right"]).default("left"),
-  button_style: z.enum(["primary", "secondary", "outline"]).nullable(),
-  display_order: z
-    .number()
-    .int()
-    .min(0, "Display order must be a non-negative integer")
-    .optional(),
-
-  // created_at: z.date().optional(),
-  // updated_at: z.date().optional(),
-});
-
-export type Contact = z.infer<typeof contactSchema>;
-
-export const defaultContactValues: Partial<Contact> = {
-  icon: null,
-  label: "",
-  value: "",
-  type: "phone",
-  platform: null,
-  status: "published",
-  position: "left",
-  button_style: null,
-  display_order: 0,
-};
 
 export default function EnhancedMenuCMS() {
   // states for header
@@ -1114,26 +1077,26 @@ export default function EnhancedMenuCMS() {
                 />
               </div>
               <ScrollArea className="h-[400px]">
-                {filteredNavSections.map((section) => (
+                {filteredNavSections?.map((section) => (
                   <Card key={section.id} className="mb-4">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-lg font-semibold">
-                            {section.name}
+                            {section?.name}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            {section.href}
+                            {section?.href}
                           </p>
                           <p className="text-sm text-gray-500">
-                            Slug: {section.slug}
+                            Slug: {(section as any)?.slug}
                           </p>
                           <p className="text-sm text-gray-500">
                             Status: {section.status}
                           </p>
                           <p className="text-sm text-gray-500">
                             Parent:{" "}
-                            {navItems.find(
+                            {navItems?.find(
                               (item) => item.id === section.parent_id
                             )?.name || "None"}
                           </p>

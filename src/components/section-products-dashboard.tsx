@@ -11,12 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import {
-  fetchSectionsAndNavItemsDashboard,
-  fetchUserSelectionsSections,
-} from "@/services/dashboard-services";
-import { fetchSectionsDashboard } from "@/lib/queries/dashboard-queries";
-import { fetchSectionsAndNavItems } from "@/app/dashboard/page";
+import { fetchUserSelectionsSections } from "@/services/dashboard-services";
 import { query } from "@/lib/db";
 
 const fetchUserSelections = async (sectionId: any) => {

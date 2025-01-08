@@ -6,8 +6,6 @@ import AdminLayout from "@/components/layouts/admin-layout";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import Providers from "./providers";
 import ScrollToTop from "@/components/header/scroll-to-top";
-import Simple from "@/components/header/simple";
-import TopHeader from "@/components/header/top-header";
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",

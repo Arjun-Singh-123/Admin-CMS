@@ -29,12 +29,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DevTool } from "@hookform/devtools";
+import { uploadImage } from "@/utils/image-util";
 type FormData = {
   contactInfo: {
     email: string;
     phone: string;
     hours: string;
     address: string;
+    image: string;
   };
   socialLinks: {
     icon: IconName;
@@ -80,8 +82,10 @@ const deleteCMSData = async (): Promise<void> => {
 
 export default function CMSUpdateForm() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
   const queryClient = useQueryClient();
-  const { register, control, handleSubmit, reset } = useForm<FormData>({
+  const { register, control, handleSubmit, reset, watch } = useForm<FormData>({
     defaultValues: {},
   });
   const {
@@ -137,9 +141,28 @@ export default function CMSUpdateForm() {
     }
   }, [data, reset]);
 
-  const onSubmit = (formData: FormData) => {
-    console.log(formData, "formData");
+  // const onSubmit = (formData: FormData) => {
+  //   console.log(formData, "formData");
+  //   updateMutation.mutate(formData);
+  // };
+
+  const onSubmit = async (formData: FormData) => {
+    if (imageFile) {
+      try {
+        const imageUrl = await uploadImage(imageFile);
+        formData.contactInfo.image = imageUrl;
+      } catch (error) {
+        toast.error("Failed to upload image");
+        return;
+      }
+    }
     updateMutation.mutate(formData);
+  };
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+    }
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -159,6 +182,20 @@ export default function CMSUpdateForm() {
               {...register("contactInfo.address")}
               placeholder="Address"
             />
+            <div className="col-span-2">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+              {watch("contactInfo.image") && (
+                <img
+                  src={watch("contactInfo.image")}
+                  alt="Contact"
+                  className="mt-2 max-w-xs"
+                />
+              )}
+            </div>
           </div>
         </div>
 
