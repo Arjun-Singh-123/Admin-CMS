@@ -16,6 +16,7 @@ const Page = async () => {
     queryKey: ["sectionsAndNavItems"],
     queryFn: fetchDashBoardSectionsAndNavItems,
   });
+  console.log("lets learn");
 
   await queryClient.prefetchQuery({
     queryKey: ["boatsNavItem"],
